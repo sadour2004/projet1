@@ -110,6 +110,7 @@ export async function getOptimizedDashboardMetrics(options: DashboardMetricsOpti
           },
         }),
       ]),
+      ]),
 
       // Total value using raw SQL for better performance
       db.$queryRaw<[{ total: bigint }]>`
