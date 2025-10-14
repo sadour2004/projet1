@@ -54,7 +54,9 @@ interface DashboardMetricsOptions {
 /**
  * Optimized dashboard metrics with reduced database queries
  */
-export async function getOptimizedDashboardMetrics(options: DashboardMetricsOptions = {}): Promise<DashboardMetrics> {
+export async function getOptimizedDashboardMetrics(
+  options: DashboardMetricsOptions = {}
+): Promise<DashboardMetrics> {
   try {
     const now = new Date()
     const startOfToday = new Date(
@@ -123,12 +125,13 @@ export async function getOptimizedDashboardMetrics(options: DashboardMetricsOpti
       const salesMovements = await db.inventoryMovement.findMany({
         where: {
           type: 'SALE_OFFLINE',
-          ...(options.startDate && options.endDate && {
-            createdAt: {
-              gte: options.startDate,
-              lte: options.endDate,
-            },
-          }),
+          ...(options.startDate &&
+            options.endDate && {
+              createdAt: {
+                gte: options.startDate,
+                lte: options.endDate,
+              },
+            }),
         },
         select: { qty: true, unitPriceCents: true },
       })
@@ -158,10 +161,10 @@ export async function getOptimizedDashboardMetrics(options: DashboardMetricsOpti
       ...movementStats,
     }
 
-    logger.info('Dashboard metrics fetched successfully', { 
+    logger.info('Dashboard metrics fetched successfully', {
       totalProducts,
       totalCategories,
-      totalUsers 
+      totalUsers,
     })
 
     return result
@@ -211,7 +214,9 @@ async function getOptimizedMovementStats(
       select: { type: true, qty: true },
     })
 
-    const calculateStats = (movements: Array<{ type: string; qty: number }>) => {
+    const calculateStats = (
+      movements: Array<{ type: string; qty: number }>
+    ) => {
       const stats = {
         sales: 0,
         returns: 0,
@@ -254,9 +259,12 @@ async function getOptimizedMovementStats(
 /**
  * Get top selling products
  */
-export async function getOptimizedTopProducts(limit = 10, options: { startDate?: Date; endDate?: Date } = {}): Promise<TopProduct[]> {
+export async function getOptimizedTopProducts(
+  limit = 10,
+  options: { startDate?: Date; endDate?: Date } = {}
+): Promise<TopProduct[]> {
   try {
-    const whereClause: any = {
+    const whereClause: Record<string, unknown> = {
       type: 'SALE_OFFLINE',
     }
 
@@ -284,7 +292,14 @@ export async function getOptimizedTopProducts(limit = 10, options: { startDate?:
     })
 
     // Aggregate sales by product
-    const productSales = new Map<string, { sales: number; revenue: number; product: any }>()
+    const productSales = new Map<
+      string,
+      {
+        sales: number
+        revenue: number
+        product: { id: string; name: string; sku: string | null }
+      }
+    >()
 
     movements.forEach((movement) => {
       if (!movement.product) return
@@ -327,7 +342,9 @@ export async function getOptimizedTopProducts(limit = 10, options: { startDate?:
 /**
  * Get low stock products
  */
-export async function getOptimizedLowStockProducts(threshold = 5): Promise<LowStockProduct[]> {
+export async function getOptimizedLowStockProducts(
+  threshold = 5
+): Promise<LowStockProduct[]> {
   try {
     const products = await db.product.findMany({
       where: {
