@@ -1,5 +1,5 @@
 import { Metadata } from 'next'
-import { requireUserOrRedirect } from '@/lib/auth/helpers'
+import { getCurrentUser } from '@/lib/auth/helpers'
 import { OptimizedBrowsePage } from '@/components/staff/optimized-browse-page'
 
 export const metadata: Metadata = {
@@ -18,8 +18,9 @@ interface BrowsePageProps {
 }
 
 export default async function BrowsePage({ searchParams }: BrowsePageProps) {
-  await requireUserOrRedirect()
+  // Allow public access to browse products
+  const user = await getCurrentUser()
   const resolvedSearchParams = await searchParams
 
-  return <OptimizedBrowsePage searchParams={resolvedSearchParams} />
+  return <OptimizedBrowsePage searchParams={resolvedSearchParams} user={user} />
 }

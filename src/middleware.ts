@@ -13,6 +13,12 @@ export async function middleware(request: NextRequest) {
   // Validate required environment variable
   if (!process.env.NEXTAUTH_SECRET) {
     console.error('NEXTAUTH_SECRET environment variable is required but not set')
+    console.error('Available env vars:', Object.keys(process.env).filter(key => key.includes('NEXT')))
+    console.error('DATABASE_URL present:', !!process.env.DATABASE_URL)
+    // For now, allow access to signin page even without NEXTAUTH_SECRET
+    if (pathname.startsWith('/auth/signin')) {
+      return NextResponse.next()
+    }
     return NextResponse.redirect(new URL('/auth/signin', request.url))
   }
 
@@ -47,7 +53,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/auth/signin', '/auth/forgot-password', '/auth/reset-password-verify', '/api/auth']
+  const publicRoutes = ['/auth/signin', '/auth/forgot-password', '/auth/reset-password-verify', '/api/auth', '/browse', '/product']
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
 
   if (isPublicRoute) {
@@ -68,6 +74,8 @@ export async function middleware(request: NextRequest) {
   if (pathname === '/dashboard' && userRole === 'OWNER') {
     return NextResponse.redirect(new URL('/owner/dashboard', request.url))
   }
+
+  // Let the page component handle root redirects
 
   // Owner-only routes
   const ownerRoutes = ['/owner']

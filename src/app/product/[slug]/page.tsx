@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { requireUserOrRedirect } from '@/lib/auth/helpers'
+import { getCurrentUser } from '@/lib/auth/helpers'
 import { db } from '@/lib/db'
 import { OptimizedProductDetail } from '@/components/staff/optimized-product-detail'
 import { MovementType } from '@/types/movement'
@@ -72,7 +72,8 @@ export async function generateMetadata({
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-  await requireUserOrRedirect()
+  // Allow public access to view product details
+  const user = await getCurrentUser()
 
   const { slug } = await params
   const product = await getProduct(slug)
@@ -98,5 +99,5 @@ export default async function ProductPage({ params }: ProductPageProps) {
     })) || []
   }
 
-  return <OptimizedProductDetail product={transformedProduct} />
+  return <OptimizedProductDetail product={transformedProduct} user={user} />
 }
