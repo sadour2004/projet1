@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import bcrypt from 'bcryptjs'
+import argon2 from 'argon2'
 
 const prisma = new PrismaClient()
 
@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     console.log('✅ Database connection successful')
     
     // Create owner user
-    const hashedPassword = await bcrypt.hash('admin123', 12)
+    const hashedPassword = await argon2.hash('admin123')
     
     const owner = await prisma.user.upsert({
       where: { email: 'owner@inventory.com' },

@@ -1,5 +1,5 @@
 const { PrismaClient } = require('@prisma/client')
-const bcrypt = require('bcryptjs')
+const argon2 = require('argon2')
 
 const prisma = new PrismaClient()
 
@@ -12,7 +12,7 @@ async function setupProduction() {
     console.log('✅ Database connection successful')
     
     // Create owner user
-    const hashedPassword = await bcrypt.hash('admin123', 12)
+    const hashedPassword = await argon2.hash('admin123')
     
     const owner = await prisma.user.upsert({
       where: { email: 'owner@inventory.com' },
