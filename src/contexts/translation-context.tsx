@@ -507,22 +507,25 @@ export function TranslationProvider({ children }: { children: ReactNode }) {
   const [locale, setLocale] = useState('fr')
 
   useEffect(() => {
-    // Load saved locale from localStorage
-    const savedLocale = localStorage.getItem('preferred-locale')
-    if (savedLocale && ['fr', 'ar'].includes(savedLocale)) {
-      setLocale(savedLocale)
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      // Load saved locale from localStorage
+      const savedLocale = localStorage.getItem('preferred-locale')
+      if (savedLocale && ['fr', 'ar'].includes(savedLocale)) {
+        setLocale(savedLocale)
 
-      // Apply RTL/LTR and font
-      if (savedLocale === 'ar') {
-        document.documentElement.setAttribute('dir', 'rtl')
-        document.documentElement.setAttribute('lang', 'ar')
-        document.documentElement.style.fontFamily =
-          'Noto Sans Arabic, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
-      } else {
-        document.documentElement.setAttribute('dir', 'ltr')
-        document.documentElement.setAttribute('lang', 'fr')
-        document.documentElement.style.fontFamily =
-          'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
+        // Apply RTL/LTR and font
+        if (savedLocale === 'ar') {
+          document.documentElement.setAttribute('dir', 'rtl')
+          document.documentElement.setAttribute('lang', 'ar')
+          document.documentElement.style.fontFamily =
+            'Noto Sans Arabic, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
+        } else {
+          document.documentElement.setAttribute('dir', 'ltr')
+          document.documentElement.setAttribute('lang', 'fr')
+          document.documentElement.style.fontFamily =
+            'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
+        }
       }
     }
   }, [])
@@ -536,19 +539,23 @@ export function TranslationProvider({ children }: { children: ReactNode }) {
 
   const handleSetLocale = (newLocale: string) => {
     setLocale(newLocale)
-    localStorage.setItem('preferred-locale', newLocale)
 
-    // Apply RTL/LTR and font
-    if (newLocale === 'ar') {
-      document.documentElement.setAttribute('dir', 'rtl')
-      document.documentElement.setAttribute('lang', 'ar')
-      document.documentElement.style.fontFamily =
-        'Noto Sans Arabic, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
-    } else {
-      document.documentElement.setAttribute('dir', 'ltr')
-      document.documentElement.setAttribute('lang', 'fr')
-      document.documentElement.style.fontFamily =
-        'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
+    // Only run on client side
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('preferred-locale', newLocale)
+
+      // Apply RTL/LTR and font
+      if (newLocale === 'ar') {
+        document.documentElement.setAttribute('dir', 'rtl')
+        document.documentElement.setAttribute('lang', 'ar')
+        document.documentElement.style.fontFamily =
+          'Noto Sans Arabic, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
+      } else {
+        document.documentElement.setAttribute('dir', 'ltr')
+        document.documentElement.setAttribute('lang', 'fr')
+        document.documentElement.style.fontFamily =
+          'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif'
+      }
     }
   }
 
