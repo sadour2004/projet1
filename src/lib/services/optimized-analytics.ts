@@ -34,9 +34,8 @@ export interface TopProduct {
   id: string
   name: string
   sku?: string | null
-  totalSold: number
+  sales: number
   revenue: number
-  stockCached: number
 }
 
 export interface LowStockProduct {
@@ -45,9 +44,6 @@ export interface LowStockProduct {
   sku?: string | null
   stockCached: number
   priceCents: number
-  category?: {
-    name: string
-  } | null
 }
 
 interface DashboardMetricsOptions {
@@ -69,79 +65,7 @@ export async function getOptimizedDashboardMetrics(options: DashboardMetricsOpti
     const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    // Use raw SQL for better performance on complex aggregations
-    const [
-      // Basic counts in parallel
-      basicCounts,
-      // Total value calculation using SQL aggregation
-      totalValueResult,
-      // Total revenue calculation using SQL aggregation
-      totalRevenueResult,
-      // Movement statistics for different periods
-      movementStats,
-    ] = await Promise.all([
-      // Basic counts
-      Promise.all([
-        db.product.count({ where: { isActive: true, isArchived: false } }),
-        db.category.count(),
-        options.startDate && options.endDate
-          ? db.inventoryMovement.count({
-              where: {
-                createdAt: {
-                  gte: options.startDate,
-                  lte: options.endDate,
-                },
-              },
-            })
-          : db.inventoryMovement.count(),
-        db.user.count(),
-        db.product.count({
-          where: {
-            isActive: true,
-            isArchived: false,
-            stockCached: { gt: 0, lte: 5 },
-          },
-        }),
-        db.product.count({
-          where: {
-            isActive: true,
-            isArchived: false,
-            stockCached: 0,
-          },
-        }),
-      ]),
-      ]),
-
-      // Total value using raw SQL for better performance
-      db.$queryRaw<[{ total: bigint }]>`
-        SELECT COALESCE(SUM(priceCents * stockCached), 0) as total
-        FROM Product 
-        WHERE isActive = 1 AND isArchived = 0
-      `,
-
-      // Total revenue using raw SQL with proper date filtering
-      options.startDate && options.endDate
-        ? db.$queryRaw<[{ total: bigint }]>`
-            SELECT COALESCE(SUM(ABS(qty) * COALESCE(unitPriceCents, 0)), 0) as total
-            FROM InventoryMovement 
-            WHERE type = 'SALE_OFFLINE'
-            AND createdAt >= ${options.startDate}
-            AND createdAt <= ${options.endDate}
-          `
-        : db.$queryRaw<[{ total: bigint }]>`
-            SELECT COALESCE(SUM(ABS(qty) * COALESCE(unitPriceCents, 0)), 0) as total
-            FROM InventoryMovement 
-            WHERE type = 'SALE_OFFLINE'
-          `,
-
-      // Movement statistics for the selected period
-      getOptimizedMovementStats(
-        options.startDate || startOfToday, 
-        options.startDate || startOfWeek, 
-        options.startDate || startOfMonth
-      ),
-    ])
-
+    // Get basic counts
     const [
       totalProducts,
       totalCategories,
@@ -149,10 +73,78 @@ export async function getOptimizedDashboardMetrics(options: DashboardMetricsOpti
       totalUsers,
       lowStockProducts,
       outOfStockProducts,
-    ] = basicCounts
-    const totalValue = Number(totalValueResult[0]?.total || 0)
-    const totalRevenue = Number(totalRevenueResult[0]?.total || 0)
+    ] = await Promise.all([
+      db.product.count({ where: { isActive: true, isArchived: false } }),
+      db.category.count(),
+      options.startDate && options.endDate
+        ? db.inventoryMovement.count({
+            where: {
+              createdAt: {
+                gte: options.startDate,
+                lte: options.endDate,
+              },
+            },
+          })
+        : db.inventoryMovement.count(),
+      db.user.count(),
+      db.product.count({
+        where: {
+          isActive: true,
+          isArchived: false,
+          stockCached: { gt: 0, lte: 5 },
+        },
+      }),
+      db.product.count({
+        where: {
+          isActive: true,
+          isArchived: false,
+          stockCached: 0,
+        },
+      }),
+    ])
 
+    // Get total value
+    let totalValue = 0
+    try {
+      const products = await db.product.findMany({
+        where: { isActive: true, isArchived: false },
+        select: { priceCents: true, stockCached: true },
+      })
+      totalValue = products.reduce((sum, product) => {
+        return sum + product.priceCents * product.stockCached
+      }, 0)
+    } catch (error) {
+      logger.error('Failed to calculate total value', { error })
+    }
+
+    // Get total revenue
+    let totalRevenue = 0
+    try {
+      const salesMovements = await db.inventoryMovement.findMany({
+        where: {
+          type: 'SALE_OFFLINE',
+          ...(options.startDate && options.endDate && {
+            createdAt: {
+              gte: options.startDate,
+              lte: options.endDate,
+            },
+          }),
+        },
+        select: { qty: true, unitPriceCents: true },
+      })
+      totalRevenue = salesMovements.reduce((sum, movement) => {
+        return sum + Math.abs(movement.qty) * (movement.unitPriceCents || 0)
+      }, 0)
+    } catch (error) {
+      logger.error('Failed to calculate total revenue', { error })
+    }
+
+    // Get movement statistics
+    const movementStats = await getOptimizedMovementStats(
+      startOfToday,
+      startOfWeek,
+      startOfMonth
+    )
 
     const result = {
       totalProducts,
@@ -166,6 +158,11 @@ export async function getOptimizedDashboardMetrics(options: DashboardMetricsOpti
       ...movementStats,
     }
 
+    logger.info('Dashboard metrics fetched successfully', { 
+      totalProducts,
+      totalCategories,
+      totalUsers 
+    })
 
     return result
   } catch (error) {
@@ -196,67 +193,53 @@ async function getOptimizedMovementStats(
   startOfMonth: Date
 ) {
   try {
-    // Use a single query with conditional aggregation for all periods
-    const result = await db.$queryRaw<
-      [
-        {
-          today_sales: bigint
-          today_returns: bigint
-          today_adjustments: bigint
-          today_total: bigint
-          week_sales: bigint
-          week_returns: bigint
-          week_adjustments: bigint
-          week_total: bigint
-          month_sales: bigint
-          month_returns: bigint
-          month_adjustments: bigint
-          month_total: bigint
-        },
-      ]
-    >`
-      SELECT 
-        -- Today stats
-        COALESCE(SUM(CASE WHEN type = 'SALE_OFFLINE' AND createdAt >= ${startOfToday} THEN ABS(qty) ELSE 0 END), 0) as today_sales,
-        COALESCE(SUM(CASE WHEN type = 'RETURN' AND createdAt >= ${startOfToday} THEN qty ELSE 0 END), 0) as today_returns,
-        COALESCE(SUM(CASE WHEN type = 'ADJUSTMENT' AND createdAt >= ${startOfToday} THEN ABS(qty) ELSE 0 END), 0) as today_adjustments,
-        COUNT(CASE WHEN createdAt >= ${startOfToday} THEN 1 END) as today_total,
-        
-        -- Week stats
-        COALESCE(SUM(CASE WHEN type = 'SALE_OFFLINE' AND createdAt >= ${startOfWeek} THEN ABS(qty) ELSE 0 END), 0) as week_sales,
-        COALESCE(SUM(CASE WHEN type = 'RETURN' AND createdAt >= ${startOfWeek} THEN qty ELSE 0 END), 0) as week_returns,
-        COALESCE(SUM(CASE WHEN type = 'ADJUSTMENT' AND createdAt >= ${startOfWeek} THEN ABS(qty) ELSE 0 END), 0) as week_adjustments,
-        COUNT(CASE WHEN createdAt >= ${startOfWeek} THEN 1 END) as week_total,
-        
-        -- Month stats
-        COALESCE(SUM(CASE WHEN type = 'SALE_OFFLINE' AND createdAt >= ${startOfMonth} THEN ABS(qty) ELSE 0 END), 0) as month_sales,
-        COALESCE(SUM(CASE WHEN type = 'RETURN' AND createdAt >= ${startOfMonth} THEN qty ELSE 0 END), 0) as month_returns,
-        COALESCE(SUM(CASE WHEN type = 'ADJUSTMENT' AND createdAt >= ${startOfMonth} THEN ABS(qty) ELSE 0 END), 0) as month_adjustments,
-        COUNT(CASE WHEN createdAt >= ${startOfMonth} THEN 1 END) as month_total
-      FROM InventoryMovement
-    `
+    // Get today's stats
+    const todayMovements = await db.inventoryMovement.findMany({
+      where: { createdAt: { gte: startOfToday } },
+      select: { type: true, qty: true },
+    })
 
-    const stats = result[0]
+    // Get week's stats
+    const weekMovements = await db.inventoryMovement.findMany({
+      where: { createdAt: { gte: startOfWeek } },
+      select: { type: true, qty: true },
+    })
+
+    // Get month's stats
+    const monthMovements = await db.inventoryMovement.findMany({
+      where: { createdAt: { gte: startOfMonth } },
+      select: { type: true, qty: true },
+    })
+
+    const calculateStats = (movements: Array<{ type: string; qty: number }>) => {
+      const stats = {
+        sales: 0,
+        returns: 0,
+        adjustments: 0,
+        totalMovements: movements.length,
+      }
+
+      movements.forEach((movement) => {
+        switch (movement.type) {
+          case 'SALE_OFFLINE':
+            stats.sales += Math.abs(movement.qty)
+            break
+          case 'RETURN':
+            stats.returns += movement.qty
+            break
+          case 'ADJUSTMENT':
+            stats.adjustments += Math.abs(movement.qty)
+            break
+        }
+      })
+
+      return stats
+    }
 
     return {
-      todayStats: {
-        sales: Number(stats.today_sales),
-        returns: Number(stats.today_returns),
-        adjustments: Number(stats.today_adjustments),
-        totalMovements: Number(stats.today_total),
-      },
-      weekStats: {
-        sales: Number(stats.week_sales),
-        returns: Number(stats.week_returns),
-        adjustments: Number(stats.week_adjustments),
-        totalMovements: Number(stats.week_total),
-      },
-      monthStats: {
-        sales: Number(stats.month_sales),
-        returns: Number(stats.month_returns),
-        adjustments: Number(stats.month_adjustments),
-        totalMovements: Number(stats.month_total),
-      },
+      todayStats: calculateStats(todayMovements),
+      weekStats: calculateStats(weekMovements),
+      monthStats: calculateStats(monthMovements),
     }
   } catch (error) {
     logger.error('Failed to get optimized movement stats', { error })
@@ -269,99 +252,82 @@ async function getOptimizedMovementStats(
 }
 
 /**
- * Optimized top products with better query performance
+ * Get top selling products
  */
-export async function getOptimizedTopProducts(
-  limit = 10,
-  options: { startDate?: Date; endDate?: Date } = {}
-): Promise<TopProduct[]> {
+export async function getOptimizedTopProducts(limit = 10, options: { startDate?: Date; endDate?: Date } = {}): Promise<TopProduct[]> {
   try {
-    let result: Array<{
-      id: string
-      name: string
-      sku: string | null
-      totalSold: bigint
-      revenue: bigint
-      stockCached: number
-    }>
-
-    if (options.startDate && options.endDate) {
-      // Try to get products for the specific period first
-      result = await db.$queryRaw`
-        SELECT 
-          p.id,
-          p.name,
-          p.sku,
-          SUM(ABS(im.qty)) as totalSold,
-          SUM(ABS(im.qty) * COALESCE(im.unitPriceCents, 0)) as revenue,
-          p.stockCached
-        FROM InventoryMovement im
-        JOIN Product p ON im.productId = p.id
-        WHERE im.type = 'SALE_OFFLINE' AND p.isArchived = 0
-        AND im.createdAt >= ${options.startDate}
-        AND im.createdAt <= ${options.endDate}
-        GROUP BY p.id, p.name, p.sku, p.stockCached
-        ORDER BY totalSold DESC
-        LIMIT ${limit}
-      `
-
-      // If no products found for the period, fall back to all-time top products
-      if (result.length === 0) {
-        result = await db.$queryRaw`
-          SELECT 
-            p.id,
-            p.name,
-            p.sku,
-            SUM(ABS(im.qty)) as totalSold,
-            SUM(ABS(im.qty) * COALESCE(im.unitPriceCents, 0)) as revenue,
-            p.stockCached
-          FROM InventoryMovement im
-          JOIN Product p ON im.productId = p.id
-          WHERE im.type = 'SALE_OFFLINE' AND p.isArchived = 0
-          GROUP BY p.id, p.name, p.sku, p.stockCached
-          ORDER BY totalSold DESC
-          LIMIT ${limit}
-        `
-      }
-    } else {
-      // No date filtering - get all-time top products
-      result = await db.$queryRaw`
-        SELECT 
-          p.id,
-          p.name,
-          p.sku,
-          SUM(ABS(im.qty)) as totalSold,
-          SUM(ABS(im.qty) * COALESCE(im.unitPriceCents, 0)) as revenue,
-          p.stockCached
-        FROM InventoryMovement im
-        JOIN Product p ON im.productId = p.id
-        WHERE im.type = 'SALE_OFFLINE' AND p.isArchived = 0
-        GROUP BY p.id, p.name, p.sku, p.stockCached
-        ORDER BY totalSold DESC
-        LIMIT ${limit}
-      `
+    const whereClause: any = {
+      type: 'SALE_OFFLINE',
     }
 
-    return result.map((row) => ({
-      id: row.id,
-      name: row.name,
-      sku: row.sku,
-      totalSold: Number(row.totalSold),
-      revenue: Number(row.revenue),
-      stockCached: row.stockCached,
-    }))
+    if (options.startDate && options.endDate) {
+      whereClause.createdAt = {
+        gte: options.startDate,
+        lte: options.endDate,
+      }
+    }
+
+    const movements = await db.inventoryMovement.findMany({
+      where: whereClause,
+      select: {
+        productId: true,
+        qty: true,
+        unitPriceCents: true,
+        product: {
+          select: {
+            id: true,
+            name: true,
+            sku: true,
+          },
+        },
+      },
+    })
+
+    // Aggregate sales by product
+    const productSales = new Map<string, { sales: number; revenue: number; product: any }>()
+
+    movements.forEach((movement) => {
+      if (!movement.product) return
+
+      const productId = movement.product.id
+      const qty = Math.abs(movement.qty)
+      const price = movement.unitPriceCents || 0
+      const revenue = qty * price
+
+      if (productSales.has(productId)) {
+        const existing = productSales.get(productId)!
+        existing.sales += qty
+        existing.revenue += revenue
+      } else {
+        productSales.set(productId, {
+          sales: qty,
+          revenue,
+          product: movement.product,
+        })
+      }
+    })
+
+    // Convert to array and sort by sales
+    return Array.from(productSales.values())
+      .map(({ sales, revenue, product }) => ({
+        id: product.id,
+        name: product.name,
+        sku: product.sku,
+        sales,
+        revenue,
+      }))
+      .sort((a, b) => b.sales - a.sales)
+      .slice(0, limit)
   } catch (error) {
-    logger.error('Failed to get optimized top products', { error })
+    logger.error('Failed to get top products', { error })
     return []
   }
 }
 
 /**
- * Optimized low stock products with better query performance
+ * Get low stock products
  */
-export async function getOptimizedLowStockProducts(
-  threshold = 5
-): Promise<LowStockProduct[]> {
+export async function getOptimizedLowStockProducts(threshold = 5): Promise<LowStockProduct[]> {
   try {
     const products = await db.product.findMany({
       where: {
@@ -375,11 +341,6 @@ export async function getOptimizedLowStockProducts(
         sku: true,
         stockCached: true,
         priceCents: true,
-        category: {
-          select: {
-            name: true,
-          },
-        },
       },
       orderBy: { stockCached: 'asc' },
     })
@@ -390,48 +351,9 @@ export async function getOptimizedLowStockProducts(
       sku: product.sku,
       stockCached: product.stockCached,
       priceCents: product.priceCents,
-      category: product.category,
     }))
   } catch (error) {
-    logger.error('Failed to get optimized low stock products', { error })
-    return []
-  }
-}
-
-/**
- * Optimized sales trend with better date grouping
- */
-export async function getOptimizedSalesTrend(days = 30) {
-  try {
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days)
-
-    // Use raw SQL for better date grouping performance
-    const result = await db.$queryRaw<
-      Array<{
-        date: string
-        units: bigint
-        revenue: bigint
-      }>
-    >`
-      SELECT 
-        DATE(createdAt) as date,
-        SUM(ABS(qty)) as units,
-        SUM(ABS(qty) * COALESCE(unitPriceCents, 0)) as revenue
-      FROM InventoryMovement 
-      WHERE type = 'SALE_OFFLINE' 
-        AND createdAt >= ${startDate}
-      GROUP BY DATE(createdAt)
-      ORDER BY date ASC
-    `
-
-    return result.map((row) => ({
-      date: row.date,
-      units: Number(row.units),
-      revenue: Number(row.revenue) / 100, // Convert cents to currency
-    }))
-  } catch (error) {
-    logger.error('Failed to get optimized sales trend', { error })
+    logger.error('Failed to get low stock products', { error })
     return []
   }
 }
