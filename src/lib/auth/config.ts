@@ -15,6 +15,11 @@ const loginSchema = z.object({
 // Helper function to safely initialize Prisma adapter
 const createPrismaAdapter = () => {
   try {
+    // Only use Prisma adapter if DATABASE_URL is properly configured
+    if (!process.env.DATABASE_URL || process.env.DATABASE_URL === 'file:./prisma/dev.db') {
+      logger.warn('Skipping Prisma adapter - DATABASE_URL not configured for production')
+      return undefined
+    }
     return PrismaAdapter(db)
   } catch (error) {
     logger.error('Failed to initialize Prisma adapter', { error })
