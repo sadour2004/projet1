@@ -15,11 +15,16 @@ export async function middleware(request: NextRequest) {
     console.error('NEXTAUTH_SECRET environment variable is required but not set')
     console.error('Available env vars:', Object.keys(process.env).filter(key => key.includes('NEXT')))
     console.error('DATABASE_URL present:', !!process.env.DATABASE_URL)
-    // For now, allow access to signin page even without NEXTAUTH_SECRET
-    if (pathname.startsWith('/auth/signin')) {
+    
+    // Allow access to signin page and API routes even without NEXTAUTH_SECRET
+    if (pathname.startsWith('/auth/signin') || pathname.startsWith('/api/')) {
       return NextResponse.next()
     }
-    return NextResponse.redirect(new URL('/auth/signin', request.url))
+    
+    // For other routes, redirect to signin with error message
+    const signInUrl = new URL('/auth/signin', request.url)
+    signInUrl.searchParams.set('error', 'ConfigurationError')
+    return NextResponse.redirect(signInUrl)
   }
 
   const token = await getToken({
