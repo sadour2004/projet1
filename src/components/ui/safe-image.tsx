@@ -74,7 +74,7 @@ export function SafeImage({
 
   // For data URLs, use regular img tag instead of Next.js Image for better compatibility
   const isDataUrl = src.startsWith('data:')
-  
+
   if (isDataUrl) {
     const imgProps = fill
       ? {
@@ -106,9 +106,12 @@ export function SafeImage({
             setImageLoading(false)
           },
         }
-    
+
     return (
-      <div className={`relative ${fill ? className : ''}`} style={fill ? { width: '100%', height: '100%' } : undefined}>
+      <div
+        className={`relative ${fill ? className : ''}`}
+        style={fill ? { width: '100%', height: '100%' } : undefined}
+      >
         <img {...imgProps} />
         {imageLoading && (
           <div
@@ -145,10 +148,12 @@ export function SafeImage({
 
   // Add fill or width/height based on the fill prop
   if (fill) {
-    (imageProps as any).fill = true
+    ;(imageProps as typeof imageProps & { fill: true }).fill = true
   } else {
-    if (width) (imageProps as any).width = width
-    if (height) (imageProps as any).height = height
+    if (width)
+      (imageProps as typeof imageProps & { width: number }).width = width
+    if (height)
+      (imageProps as typeof imageProps & { height: number }).height = height
   }
 
   return (
