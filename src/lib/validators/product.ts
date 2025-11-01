@@ -22,10 +22,16 @@ export const createProductSchema = z.object({
   images: z
     .array(
       z.object({
-        // Accept absolute http(s) URLs and site-relative paths like "/uploads/..."
+        // Accept absolute http(s) URLs, site-relative paths like "/uploads/...", and data URLs
         url: z.string().refine((u) => {
           if (!u) return false
-          return /^https?:\/\//.test(u) || u.startsWith('/')
+          // Accept http/https URLs
+          if (/^https?:\/\//.test(u)) return true
+          // Accept relative paths starting with /
+          if (u.startsWith('/')) return true
+          // Accept data URLs (e.g., data:image/png;base64,...)
+          if (u.startsWith('data:')) return true
+          return false
         }, 'Invalid url'),
         alt: z.string().max(255).optional(),
         width: z.number().int().positive().optional(),
