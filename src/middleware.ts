@@ -4,6 +4,24 @@ import { getToken } from 'next-auth/jwt'
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const hostname = request.headers.get('host') || ''
+
+  // Redirect preview URLs to production URL
+  // Production URL pattern: inventory-management-app-sadours-projects.vercel.app
+  // Preview URL pattern: inventory-management-{hash}-sadours-projects.vercel.app
+  const productionHost = 'inventory-management-app-sadours-projects.vercel.app'
+
+  if (
+    hostname.includes('inventory-management-') &&
+    hostname.includes('-sadours-projects.vercel.app') &&
+    hostname !== productionHost
+  ) {
+    // This is a preview URL, redirect to production
+    const productionUrl = new URL(
+      `https://${productionHost}${pathname}${request.nextUrl.search}`
+    )
+    return NextResponse.redirect(productionUrl, 308) // 308 = Permanent Redirect
+  }
 
   // Skip middleware for API routes that handle their own authentication
   if (pathname.startsWith('/api/')) {
@@ -12,8 +30,13 @@ export async function middleware(request: NextRequest) {
 
   // Validate required environment variable
   if (!process.env.NEXTAUTH_SECRET) {
-    console.error('NEXTAUTH_SECRET environment variable is required but not set')
-    console.error('Available env vars:', Object.keys(process.env).filter(key => key.includes('NEXT')))
+    console.error(
+      'NEXTAUTH_SECRET environment variable is required but not set'
+    )
+    console.error(
+      'Available env vars:',
+      Object.keys(process.env).filter((key) => key.includes('NEXT'))
+    )
     console.error('DATABASE_URL present:', !!process.env.DATABASE_URL)
     // For now, allow access to signin page even without NEXTAUTH_SECRET
     if (pathname.startsWith('/auth/signin')) {
@@ -25,6 +48,10 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({
     req: request,
     secret: process.env.NEXTAUTH_SECRET,
+    cookieName:
+      process.env.NODE_ENV === 'production'
+        ? '__Secure-next-auth.session-token'
+        : 'next-auth.session-token',
   })
 
   // Security headers
@@ -53,7 +80,14 @@ export async function middleware(request: NextRequest) {
   }
 
   // Public routes that don't require authentication
-  const publicRoutes = ['/auth/signin', '/auth/forgot-password', '/auth/reset-password-verify', '/api/auth', '/browse', '/product']
+  const publicRoutes = [
+    '/auth/signin',
+    '/auth/forgot-password',
+    '/auth/reset-password-verify',
+    '/api/auth',
+    '/browse',
+    '/product',
+  ]
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
 
   if (isPublicRoute) {
