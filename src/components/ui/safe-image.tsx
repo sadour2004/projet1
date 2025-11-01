@@ -50,10 +50,11 @@ export function SafeImage({
       lowerUrl.includes('example.com') ||
       lowerUrl.includes('broken') ||
       lowerUrl.includes('404') ||
-      !url.startsWith('http') ||
       url === 'undefined' ||
       url === 'null'
     )
+    // Accept http/https URLs, data URLs, and relative paths starting with /
+    // Note: We removed !url.startsWith('http') check to allow data: and / paths
   }
 
   // If URL is problematic or image failed to load, show placeholder
@@ -71,7 +72,58 @@ export function SafeImage({
     )
   }
 
-  // Create proper props object for Next.js Image
+  // For data URLs, use regular img tag instead of Next.js Image for better compatibility
+  const isDataUrl = src.startsWith('data:')
+  
+  if (isDataUrl) {
+    const imgProps = fill
+      ? {
+          src,
+          alt,
+          className: `w-full h-full object-cover transition-opacity duration-300 ${imageLoading ? 'opacity-0' : 'opacity-100'} ${className}`,
+          onError: () => {
+            console.warn(`[SafeImage] Failed to load data URL image`)
+            setImageError(true)
+            setImageLoading(false)
+          },
+          onLoad: () => {
+            setImageLoading(false)
+          },
+          style: { position: 'absolute', inset: 0 },
+        }
+      : {
+          src,
+          alt,
+          width,
+          height,
+          className: `transition-opacity duration-300 ${imageLoading ? 'opacity-0' : 'opacity-100'} ${className}`,
+          onError: () => {
+            console.warn(`[SafeImage] Failed to load data URL image`)
+            setImageError(true)
+            setImageLoading(false)
+          },
+          onLoad: () => {
+            setImageLoading(false)
+          },
+        }
+    
+    return (
+      <div className={`relative ${fill ? className : ''}`} style={fill ? { width: '100%', height: '100%' } : undefined}>
+        <img {...imgProps} />
+        {imageLoading && (
+          <div
+            className={`absolute inset-0 flex items-center justify-center bg-gray-100 ${className}`}
+          >
+            <div className="animate-pulse">
+              <Package className="h-8 w-8 text-gray-300" />
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Create proper props object for Next.js Image (for http/https URLs)
   const imageProps = {
     src,
     alt,

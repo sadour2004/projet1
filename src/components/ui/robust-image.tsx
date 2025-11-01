@@ -34,10 +34,11 @@ export function RobustImage({
       lowerUrl.includes('example.com') ||
       lowerUrl.includes('broken') ||
       lowerUrl.includes('404') ||
-      !url.startsWith('http') ||
       url === 'undefined' ||
       url === 'null'
     )
+    // Accept http/https URLs, data URLs, and relative paths starting with /
+    // Note: We removed !url.startsWith('http') check to allow data: and / paths
   }
 
   // If URL is problematic or image failed to load, show placeholder
