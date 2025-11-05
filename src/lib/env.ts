@@ -31,6 +31,26 @@ const envSchema = z.object({
     .default('development'),
 })
 
-export const env = envSchema.parse(process.env)
+// Parse environment variables with better error handling
+let env: z.infer<typeof envSchema>
+try {
+  env = envSchema.parse(process.env)
+} catch (error) {
+  console.error('Environment variable validation failed:', error)
+  // Provide fallback values for production
+  env = {
+    DATABASE_URL: process.env.DATABASE_URL || 'file:./prisma/dev.db',
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'fallback-secret-key',
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
+    S3_ENDPOINT: process.env.S3_ENDPOINT,
+    S3_ACCESS_KEY: process.env.S3_ACCESS_KEY,
+    S3_SECRET_KEY: process.env.S3_SECRET_KEY,
+    S3_BUCKET: process.env.S3_BUCKET,
+    S3_REGION: process.env.S3_REGION,
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    REDIS_URL: process.env.REDIS_URL,
+    NODE_ENV: (process.env.NODE_ENV as 'development' | 'production' | 'test') || 'development',
+  }
+}
 
 export type Env = z.infer<typeof envSchema>

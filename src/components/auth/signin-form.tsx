@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -31,6 +31,14 @@ export function SignInForm() {
   const [errors, setErrors] = useState<Partial<SignInForm>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Check for configuration errors from URL params
+  React.useEffect(() => {
+    const errorParam = searchParams.get('error')
+    if (errorParam === 'ConfigurationError') {
+      setError('Configuration error: Please check environment variables')
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
