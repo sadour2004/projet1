@@ -1,0 +1,189 @@
+=================================================================
+  STATISTIQUES DESCRIPTIVES – Taux de chômage au Maroc (1991-2024)
+=================================================================
+  Nombre d'observations : 34
+  Période               : 1991 – 2024
+  Moyenne                : 11.017 %
+  Médiane                : 10.125 %
+  Écart-type             : 2.000 %
+  Variance               : 4.000
+  Minimum                : 8.896 % (2023)
+  Maximum                : 14.054 % (1995)
+  Étendue                : 5.158 %
+  Q1 (25e percentile)    : 9.241 %
+  Q3 (75e percentile)    : 13.361 %
+  IQR                    : 4.121 %
+  Coefficient de var.    : 18.15 %
+  Skewness (asymétrie)   : 0.4689
+  Kurtosis (aplatissement): -1.5399
+
+  TENDANCE LINÉAIRE :
+    Pente               : -0.1711 % / an
+    R²                  : 0.7257
+    p-value             : 0.000000
+    → Tendance baissière, significative au seuil 5%
+=================================================================
+
+=================================================================
+  TESTS DE STATIONNARITÉ
+=================================================================
+
+  ► Test de Dickey-Fuller Augmenté (ADF)
+    Statistique ADF : -1.0946
+    p-value         : 0.717211
+    Lags utilisés   : 0
+    Observations    : 33
+    Valeur critique (1%) : -3.6461
+    Valeur critique (5%) : -2.9541
+    Valeur critique (10%) : -2.6160
+    → Conclusion : Série NON STATIONNAIRE (H0 non rejetée)
+
+  ► Test KPSS (Kwiatkowski-Phillips-Schmidt-Shin)
+    Statistique KPSS : 0.6402
+    p-value          : 0.0190
+    Lags utilisés    : 4
+    Valeur critique (10%) : 0.3470
+    Valeur critique (5%) : 0.4630
+    Valeur critique (2.5%) : 0.5740
+    Valeur critique (1%) : 0.7390
+    → Conclusion : Série NON STATIONNAIRE (H0 rejetée)
+
+  ► Test ADF sur la série DIFFÉRENCIÉE (ordre 1)
+    Statistique ADF : -6.4685
+    p-value         : 0.000000
+    → Série différenciée STATIONNAIRE → la série originale est I(1)
+=================================================================
+
+=================================================================
+  ANALYSE DES VARIATIONS ANNUELLES
+=================================================================
+
+  Variation absolue moyenne : -0.133 pp/an
+  Variation absolue médiane : -0.081 pp/an
+  Plus forte hausse         : +1.998 pp (2020)
+  Plus forte baisse         : -1.340 pp (2006)
+  Années de hausse           : 15
+  Années de baisse           : 18
+  Années stables (±0.1 pp)   : 5
+
+  DÉTAIL ANNÉE PAR ANNÉE :
+  Année    Taux (%)     Δ (pp)     Δ (%)     
+  ----------------------------------------
+  1991     13.502       —          —         
+  1992     13.781       +0.279     +2.07     
+  1993     14.026       +0.245     +1.78     
+  1994     13.858       -0.168     -1.20     
+  1995     14.054       +0.196     +1.41     
+  1996     13.362       -0.692     -4.92     
+  1997     14.025       +0.663     +4.96     
+  1998     13.359       -0.666     -4.75     
+  1999     13.940       +0.581     +4.35     
+  2000     13.580       -0.360     -2.58     
+  2001     12.460       -1.120     -8.25     
+  2002     11.590       -0.870     -6.98     
+  2003     11.920       +0.330     +2.85     
+  2004     10.830       -1.090     -9.14     
+  2005     11.010       +0.180     +1.66     
+  2006     9.670        -1.340     -12.17    
+  2007     9.560        -0.110     -1.14     
+  2008     9.570        +0.010     +0.10     
+  2009     8.960        -0.610     -6.37     
+  2010     9.090        +0.130     +1.45     
+  2011     8.910        -0.180     -1.98     
+  2012     8.990        +0.080     +0.90     
+  2013     9.230        +0.240     +2.67     
+  2014     9.700        +0.470     +5.09     
+  2015     9.460        -0.240     -2.47     
+  2016     9.300        -0.160     -1.69     
+  2017     9.220        -0.080     -0.86     
+  2018     9.272        +0.052     +0.56     
+  2019     9.191        -0.081     -0.87     
+  2020     11.189       +1.998     +21.74    
+  2021     10.551       -0.638     -5.70     
+  2022     9.413        -1.138     -10.79    
+  2023     8.896        -0.517     -5.49     
+  2024     9.103        +0.207     +2.33     
+
+  PHASES IDENTIFIÉES :
+    1992–1993 : hausse
+    1994       : baisse
+    1995       : hausse
+    1996       : baisse
+    1997       : hausse
+    1998       : baisse
+    1999       : hausse
+    2000–2002 : baisse
+    2003       : hausse
+    2004       : baisse
+    2005       : hausse
+    2006–2007 : baisse
+    2008       : stable
+    2009       : baisse
+    2010       : hausse
+    2011       : baisse
+    2012       : stable
+    2013–2014 : hausse
+    2015–2016 : baisse
+    2017–2019 : stable
+    2020       : hausse
+    2021–2023 : baisse
+    2024       : hausse
+=================================================================
+
+=================================================================
+  LISSAGE ET PRÉVISION
+=================================================================
+
+  Lissage exponentiel simple :
+    Alpha optimal  : 0.9057
+    SSE            : 13.8516
+
+  Lissage exponentiel double (Holt) :
+    Alpha optimal  : 0.8361
+    Beta optimal   : 0.0000
+    SSE            : 13.0552
+
+  PRÉVISIONS :
+  Année    SES (%)      Holt (%)    
+  --------------------------------
+  2025     9.089        8.924       
+  2026     9.089        8.787       
+  2027     9.089        8.651       
+=================================================================
+
+=================================================================
+  SYNTHÈSE DE L'ANALYSE
+=================================================================
+
+  Le taux de chômage au Maroc sur la période 1991–2024 révèle
+  plusieurs dynamiques structurelles :
+
+  1. TENDANCE GÉNÉRALE :
+     Le chômage affiche une tendance baissière sur la période,
+     avec une diminution moyenne de 0.171 point/an.
+
+  2. PHASES DISTINCTES :
+     • 1991–1999 : Phase de hausse marquée, culminant à un pic
+       historique de 14.1%.
+     • 2000–2010 : Période de réduction progressive du chômage,
+       traduisant les effets des réformes économiques.
+     • 2011–2019 : Stabilisation relative autour de 9–10%.
+     • 2020       : Choc COVID-19 avec hausse à 11.2%.
+     • 2021–2024 : Retour progressif vers les niveaux pré-pandémie.
+
+  3. STATIONNARITÉ :
+     La série est non stationnaire en niveau (test ADF non significatif),
+     mais devient stationnaire après différenciation d'ordre 1 → I(1).
+
+  4. NIVEAU STRUCTUREL :
+     Le taux moyen sur toute la période est de 11.0%, avec
+     un coefficient de variation de 18.2%, indiquant
+     une dispersion modérée autour de la moyenne.
+
+  5. PERSPECTIVES :
+     Les modèles de lissage exponentiel suggèrent une continuation
+     de la tendance récente, avec un taux projeté autour de
+     9.1% à court terme, sous réserve d'absence de chocs
+     macroéconomiques majeurs.
+
+=================================================================
