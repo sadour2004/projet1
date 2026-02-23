@@ -28,32 +28,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Validate required environment variable
-  if (!process.env.NEXTAUTH_SECRET) {
-    console.error(
-      'NEXTAUTH_SECRET environment variable is required but not set'
-    )
-    console.error(
-      'Available env vars:',
-      Object.keys(process.env).filter((key) => key.includes('NEXT'))
-    )
-    console.error('DATABASE_URL present:', !!process.env.DATABASE_URL)
-    // For now, allow access to signin page even without NEXTAUTH_SECRET
-    if (pathname.startsWith('/auth/signin')) {
-      return NextResponse.next()
-    }
-    return NextResponse.redirect(new URL('/auth/signin', request.url))
-  }
-
-  const token = await getToken({
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET,
-    cookieName:
-      process.env.NODE_ENV === 'production'
-        ? '__Secure-next-auth.session-token'
-        : 'next-auth.session-token',
-  })
-
   // Security headers
   const response = NextResponse.next()
 
@@ -84,15 +58,33 @@ export async function middleware(request: NextRequest) {
     '/auth/signin',
     '/auth/forgot-password',
     '/auth/reset-password-verify',
+    '/ai-email-labeling-agent',
     '/api/auth',
     '/browse',
     '/product',
   ]
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
 
+  // Allow public routes to work even if auth isn't configured (useful for demos)
+  if (!process.env.NEXTAUTH_SECRET) {
+    if (isPublicRoute) {
+      return response
+    }
+    return NextResponse.redirect(new URL('/auth/signin', request.url))
+  }
+
   if (isPublicRoute) {
     return response
   }
+
+  const token = await getToken({
+    req: request,
+    secret: process.env.NEXTAUTH_SECRET,
+    cookieName:
+      process.env.NODE_ENV === 'production'
+        ? '__Secure-next-auth.session-token'
+        : 'next-auth.session-token',
+  })
 
   // Redirect unauthenticated users to sign in
   if (!token) {
