@@ -14,7 +14,8 @@ export async function middleware(request: NextRequest) {
   if (
     hostname.includes('inventory-management-') &&
     hostname.includes('-sadours-projects.vercel.app') &&
-    hostname !== productionHost
+    hostname !== productionHost &&
+    !pathname.startsWith('/ai-email-labeling-agent')
   ) {
     // This is a preview URL, redirect to production
     const productionUrl = new URL(
