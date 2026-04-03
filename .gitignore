@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ML artifacts
+*.keras
+*.h5
+/logs/
+__pycache__/
